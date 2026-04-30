@@ -1,45 +1,22 @@
-"""
-Aufgabe 7 – Grafische Darstellung der Nullstellenfindung
-
-In diesem Programm wird das Bisektionsverfahren grafisch dargestellt.
-Die Nullstelle der Funktion
-
-    f(x) = x² - n
-
-wird schrittweise berechnet und als Animation gezeigt.
-
-Dargestellt werden:
-1. Der Funktionsgraph mit aktuellem Intervall
-2. Die Annäherung der Lösung je Iteration
-"""
+"""Aufgabe 7 – Dynamische grafische Darstellung der Nullstellenfindung"""
 
 from __future__ import annotations
 
 # -------------------------------------------------
-# Importieren der benötigten Module
+# Importe
 # -------------------------------------------------
 
-# Für mathematische Funktionen (sqrt)
 import math
-
-# Dataclass zum Speichern der Iterationen
 from dataclasses import dataclass
-
-# Typehinting für Funktionen
 from typing import Callable
 
-# matplotlib Backend einstellen
-# nötig damit Fenster richtig geöffnet wird
 import matplotlib
+
+# Wichtig: Backend setzen, damit Fenster korrekt geöffnet wird
 matplotlib.use("TkAgg")
 
-# Diagramme erstellen
 import matplotlib.pyplot as plt
-
-# Für Zahlenbereiche / Arrays
 import numpy as np
-
-# Für Animationen
 from matplotlib.animation import FuncAnimation
 
 
@@ -47,48 +24,44 @@ from matplotlib.animation import FuncAnimation
 # Globale Variable
 # -------------------------------------------------
 
-# Wird benötigt, damit matplotlib die Animation
-# nicht automatisch löscht
+# Wird benötigt, damit matplotlib die Animation nicht
+# automatisch aus dem Speicher löscht
 anim = None
 
 
 # -------------------------------------------------
-# Dataclass für Iterationsdaten
+# Datenstruktur für Iterationen
 # -------------------------------------------------
 
 @dataclass
 class IterationData:
     """
-    Speichert alle Werte eines Schrittes.
+    Diese Klasse speichert alle relevanten Werte
+    einer einzelnen Iteration des Bisektionsverfahrens.
     """
 
-    # Nummer der Iteration
-    iteration: int
-
-    # Linke Intervallgrenze
-    a: float
-
-    # Rechte Intervallgrenze
-    b: float
-
-    # Mittelpunkt
-    c: float
-
-    # Funktionswert an c
-    fc: float
+    iteration: int   # Nummer der Iteration
+    a: float         # linke Intervallgrenze
+    b: float         # rechte Intervallgrenze
+    c: float         # Mittelpunkt des Intervalls
+    fc: float        # Funktionswert an c
 
 
 # -------------------------------------------------
-# Funktion aus Aufgabe 1
+# Beispiel-Funktion
 # -------------------------------------------------
 
 def funktion(x: float, n: float) -> float:
     """
-    Berechnet:
+    Beispiel-Funktion:
 
         f(x) = x² - n
 
-    Nullstelle entspricht sqrt(n)
+    Die Nullstelle entspricht sqrt(n).
+
+    :param x: Variable
+    :param n: Parameter
+    :return: Funktionswert
     """
     return x**2 - n
 
@@ -102,53 +75,78 @@ def bisektion_history(
     a: float,
     b: float,
     n: float,
-    epsilon: float = 1e-8
+    epsilon: float = 1e-8,
+    max_iter: int = 1000
 ) -> list[IterationData]:
     """
-    Führt das Bisektionsverfahren aus.
+    Führt das Bisektionsverfahren aus und speichert
+    jeden einzelnen Iterationsschritt.
 
-    Jeder Schritt wird gespeichert,
-    damit später eine Animation möglich ist.
+    Vorteil:
+    → spätere Visualisierung möglich
+
+    :param func: zu untersuchende Funktion
+    :param a: linke Intervallgrenze
+    :param b: rechte Intervallgrenze
+    :param n: Parameter
+    :param epsilon: gewünschte Genauigkeit
+    :param max_iter: maximale Iterationen
+    :return: Liste aller Iterationen
     """
 
-    # Liste für alle Iterationen
-    history = []
+    # Liste zur Speicherung aller Schritte
+    history: list[IterationData] = []
 
-    while True:
+    # Funktionswerte an den Intervallgrenzen berechnen
+    fa = func(a, n)
+    fb = func(b, n)
 
-        # Mittelpunkt des aktuellen Intervalls
-        c = (a + b) / 2
-
-        # Funktionswert im Mittelpunkt
-        fc = func(c, n)
-
-        # Werte speichern
-        history.append(
-            IterationData(
-                len(history) + 1,   # Iterationsnummer
-                a,                  # linke Grenze
-                b,                  # rechte Grenze
-                c,                  # Mittelpunkt
-                fc                  # Funktionswert
-            )
+    # Prüfen, ob ein Vorzeichenwechsel vorliegt
+    # → Voraussetzung für Bisektion!
+    if fa * fb >= 0:
+        raise ValueError(
+            "Ungültiges Intervall: f(a) und f(b) brauchen unterschiedliche Vorzeichen."
         )
 
-        # Prüfen ob Lösung genau genug
+    # Iteratives Verfahren
+    for iteration in range(1, max_iter + 1):
+
+        # -----------------------------------------
+        # Schritt 1: Mittelpunkt berechnen
+        # -----------------------------------------
+        c = (a + b) / 2
+
+        # Funktionswert am Mittelpunkt
+        fc = func(c, n)
+
+        # -----------------------------------------
+        # Schritt 2: Werte speichern
+        # -----------------------------------------
+        history.append(
+            IterationData(iteration, a, b, c, fc)
+        )
+
+        # -----------------------------------------
+        # Schritt 3: Abbruchbedingung prüfen
+        # -----------------------------------------
         if abs(fc) < epsilon:
+            # gewünschte Genauigkeit erreicht
             break
 
-        # Prüfen in welcher Hälfte
-        # die Nullstelle liegt
+        # -----------------------------------------
+        # Schritt 4: Intervall halbieren
+        # -----------------------------------------
 
-        # Wenn Vorzeichenwechsel links
-        if func(a, n) * fc < 0:
+        # Falls Vorzeichenwechsel links → Nullstelle liegt links
+        if fa * fc < 0:
             b = c
+            fb = fc
 
         # Sonst rechts
         else:
             a = c
+            fa = fc
 
-    # Alle Schritte zurückgeben
     return history
 
 
@@ -158,124 +156,103 @@ def bisektion_history(
 
 def animate_solver(
     history: list[IterationData],
-    n: float
+    n: float,
+    x_min: float,
+    x_max: float
 ) -> None:
     """
-    Erstellt die grafische Animation.
+    Erstellt eine Animation des Lösungsprozesses.
+
+    Darstellung:
+    1. Funktionsgraph + aktuelles Intervall
+    2. Annäherung der Lösung über Iterationen
+
+    :param history: gespeicherte Iterationen
+    :param n: Parameter
+    :param x_min: minimale x-Achse
+    :param x_max: maximale x-Achse
     """
 
     global anim
 
-    # Zwei Diagramme erzeugen
-    fig, (ax1, ax2) = plt.subplots(
-        2,              # 2 Zeilen
-        1,              # 1 Spalte
-        figsize=(10, 8)
-    )
+    # Zwei Diagramme (oben: Funktion, unten: Verlauf)
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
 
-    # x-Werte für den Graphen
-    x = np.linspace(0, 28, 500)
+    # x-Werte für Graph
+    x = np.linspace(x_min, x_max, 500)
 
     # y-Werte berechnen
     y = [funktion(i, n) for i in x]
 
-    # Exakte Lösung berechnen
-    echte_loesung = math.sqrt(n)
+    # Analytische Lösung (falls möglich)
+    echte_loesung = math.sqrt(n) if n >= 0 else None
 
-    # ---------------------------------------------
-    # Wird pro Frame aufgerufen
-    # ---------------------------------------------
-    def update(frame):
+    # -------------------------------------------------
+    # Update-Funktion (wird für jedes Frame aufgerufen)
+    # -------------------------------------------------
 
-        # Aktuelle Daten holen
+    def update(frame: int) -> None:
+
+        # Aktuelle Iteration holen
         daten = history[frame]
 
         # Diagramme leeren
         ax1.clear()
         ax2.clear()
 
-        # =========================================
-        # Diagramm 1
-        # Funktion + Intervall
-        # =========================================
+        # =============================================
+        # Diagramm 1: Funktion + Intervall
+        # =============================================
 
-        # Funktion zeichnen
+        # Funktionsgraph zeichnen
         ax1.plot(x, y)
 
-        # x-Achse
+        # x-Achse (y=0)
         ax1.axhline(0)
 
-        # Linke Grenze
-        ax1.axvline(
-            daten.a,
-            linestyle="--"
-        )
+        # Intervallgrenzen anzeigen
+        ax1.axvline(daten.a, linestyle="--")
+        ax1.axvline(daten.b, linestyle="--")
 
-        # Rechte Grenze
-        ax1.axvline(
-            daten.b,
-            linestyle="--"
-        )
+        # aktueller Punkt c
+        ax1.plot(daten.c, daten.fc, "ro")
 
-        # Aktueller Mittelpunkt
-        ax1.plot(
-            daten.c,
-            daten.fc,
-            "ro"
-        )
-
-        # Titel
         ax1.set_title(
-            f"Iteration {daten.iteration}"
+            f"Iteration {daten.iteration}, c = {daten.c:.10f}"
         )
 
-        # =========================================
-        # Diagramm 2
-        # Annäherung an Lösung
-        # =========================================
+        # =============================================
+        # Diagramm 2: Konvergenz
+        # =============================================
 
-        # Bisherige Iterationen
-        iterationen = [
-            d.iteration
-            for d in history[:frame + 1]
-        ]
+        # bisherige Iterationen
+        iterationen = [d.iteration for d in history[:frame + 1]]
 
-        # Alle bisherigen c-Werte
-        werte = [
-            d.c
-            for d in history[:frame + 1]
-        ]
+        # bisherige Näherungen
+        werte = [d.c for d in history[:frame + 1]]
 
-        # Linie zeichnen
-        ax2.plot(
-            iterationen,
-            werte,
-            marker="o"
-        )
+        # Plot der Annäherung
+        ax2.plot(iterationen, werte, marker="o")
 
-        # Exakte Lösung anzeigen
-        ax2.axhline(
-            echte_loesung,
-            linestyle=":"
-        )
+        # exakte Lösung als Referenz
+        if echte_loesung is not None:
+            ax2.axhline(echte_loesung, linestyle=":")
 
-        # Titel
-        ax2.set_title(
-            "Annäherung an die Lösung"
-        )
+        ax2.set_title("Annäherung an die Lösung")
 
-        # Layout schöner machen
+        # Layout optimieren
         plt.tight_layout()
 
-    # ---------------------------------------------
+    # -------------------------------------------------
     # Animation starten
-    # ---------------------------------------------
+    # -------------------------------------------------
+
     anim = FuncAnimation(
-        fig,                 # Fenster
-        update,              # Update Funktion
-        frames=len(history), # Anzahl Bilder
-        interval=1000,       # 1 Sekunde
-        repeat=False         # kein Wiederholen
+        fig,
+        update,
+        frames=len(history),
+        interval=1000,
+        repeat=False
     )
 
     # Fenster anzeigen
@@ -283,27 +260,54 @@ def animate_solver(
 
 
 # -------------------------------------------------
-# Hauptfunktion
+# Hilfsfunktion für Eingaben
 # -------------------------------------------------
 
-def plotter() -> None:
+def lies_float(text: str, standard: float | None = None) -> float:
     """
-    Startet Aufgabe 7.
+    Liest eine Fließkommazahl vom Benutzer ein.
+
+    Vorteil:
+    → Standardwerte möglich
+
+    :param text: Eingabeaufforderung
+    :param standard: Standardwert
+    :return: eingegebener Wert
+    """
+    eingabe = input(text)
+
+    if eingabe == "" and standard is not None:
+        return standard
+
+    return float(eingabe)
+
+
+# -------------------------------------------------
+# Hauptprogramm
+# -------------------------------------------------
+
+def main() -> None:
+    """
+    Startpunkt des Programms.
+    Liest Eingaben und startet die Animation.
     """
 
-    # Nullstelle von sqrt(25) suchen
+    print("Aufgabe 7 – Animation dynamisch")
+
+    # Eingaben (mit Defaults)
+    n = lies_float("n eingeben [25]: ", 25.0)
+    a = lies_float("linke Grenze a [0]: ", 0.0)
+    b = lies_float("rechte Grenze b [28]: ", 28.0)
+    epsilon = lies_float("Genauigkeit epsilon [1e-8]: ", 1e-8)
+    max_iter = int(lies_float("maximale Iterationen [1000]: ", 1000))
+
+    # Berechnung der Iterationen
     daten = bisektion_history(
-        funktion,
-        0,      # linke Grenze
-        28,     # rechte Grenze
-        25      # n
+        funktion, a, b, n, epsilon, max_iter
     )
 
-    # Animation anzeigen
-    animate_solver(
-        daten,
-        25
-    )
+    # Animation starten
+    animate_solver(daten, n, min(a, b), max(a, b))
 
 
 # -------------------------------------------------
@@ -311,4 +315,4 @@ def plotter() -> None:
 # -------------------------------------------------
 
 if __name__ == "__main__":
-    plotter()
+    main()

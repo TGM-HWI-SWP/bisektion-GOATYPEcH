@@ -1,44 +1,50 @@
-"""
-Aufgabe 9 – Berechnung der Leitungslänge
+"""Aufgabe 9 – Leitungslänge dynamisch berechnen"""
 
-Gegeben:
-- Abstand zwischen den Masten: w = 100 m
-- Durchhang in der Mitte: 10 m
-
-Gesucht:
-- Krümmungsradius a
-- Länge der Leitung l
-
-Verwendete Gleichungen:
-y(x) = a * cosh(x / a) - a + y0
-
-Randbedingung:
-y(50) = y0 + 10
-
-Daraus folgt:
-a * (cosh(50 / a) - 1) - 10 = 0
-
-Diese Gleichung wird mit dem Bisektionsverfahren gelöst.
-"""
+# -------------------------------------------------
+# Importe
+# -------------------------------------------------
 
 import math
 from typing import Callable
 
 
-def funktion_a(a: float) -> float:
+# -------------------------------------------------
+# Nullstellenfunktion für den Krümmungsradius
+# -------------------------------------------------
+
+def funktion_a(
+    a: float,
+    halbe_spannweite: float,
+    durchhang: float
+) -> float:
     """
-    Funktion zur Berechnung des Krümmungsradius a.
+    Berechnet die Nullstellenfunktion für den Krümmungsradius a.
 
-    Aus der Randbedingung:
-    y(50) = y0 + 10
+    Grundlage ist die Kettenliniengleichung:
 
-    entsteht die Nullstellenfunktion:
-    f(a) = a * (cosh(50 / a) - 1) - 10
+        y(x) = a * cosh(x / a) - a + y0
 
-    Die Nullstelle dieser Funktion ist der gesuchte Wert für a.
+    Für die Randbedingung gilt:
+
+        y(w / 2) = y0 + durchhang
+
+    Daraus entsteht die Gleichung:
+
+        a * (cosh((w / 2) / a) - 1) - durchhang = 0
+
+    Die Nullstelle dieser Funktion ist der gesuchte Krümmungsradius.
+
+    :param a: Krümmungsradius
+    :param halbe_spannweite: halber Abstand zwischen den Masten
+    :param durchhang: Durchhang in der Mitte
+    :return: Funktionswert
     """
-    return a * (math.cosh(50 / a) - 1) - 10
+    return a * (math.cosh(halbe_spannweite / a) - 1) - durchhang
 
+
+# -------------------------------------------------
+# Bisektionsverfahren
+# -------------------------------------------------
 
 def bisektion(
     func: Callable[[float], float],
@@ -50,109 +56,243 @@ def bisektion(
     """
     Berechnet eine Nullstelle mit dem Bisektionsverfahren.
 
-    Parameter:
-        func     -> Funktion, deren Nullstelle gesucht wird
-        a        -> linke Intervallgrenze
-        b        -> rechte Intervallgrenze
-        epsilon  -> gewünschte Genauigkeit
-        max_iter -> maximale Anzahl an Iterationen
+    Ablauf:
+    1. Funktionswerte an den Grenzen berechnen
+    2. Prüfen, ob ein Vorzeichenwechsel existiert
+    3. Mittelpunkt berechnen
+    4. Intervall halbieren
+    5. Wiederholen bis Genauigkeit erreicht ist
 
-    Rückgabe:
-        Nullstelle und Anzahl der Iterationen
+    :param func: Funktion, deren Nullstelle gesucht wird
+    :param a: linke Intervallgrenze
+    :param b: rechte Intervallgrenze
+    :param epsilon: gewünschte Genauigkeit
+    :param max_iter: maximale Anzahl Iterationen
+    :return: gefundene Nullstelle und Anzahl der Iterationen
     """
-
     try:
-        # Funktionswerte an den Intervallgrenzen berechnen
+        # -----------------------------------------
+        # Schritt 1: Funktionswerte berechnen
+        # -----------------------------------------
+
         fa = func(a)
         fb = func(b)
 
-        # Prüfen, ob ein Vorzeichenwechsel vorhanden ist
+        # -----------------------------------------
+        # Schritt 2: Startintervall prüfen
+        # -----------------------------------------
+
+        # Für das Bisektionsverfahren muss ein Vorzeichenwechsel vorliegen.
+        # Das bedeutet: f(a) und f(b) müssen unterschiedliche Vorzeichen haben.
         if fa * fb >= 0:
             raise ValueError(
-                "Ungültiges Intervall! "
-                "f(a) und f(b) müssen unterschiedliche Vorzeichen haben."
+                "Ungültiges Intervall! f(a) und f(b) müssen unterschiedliche Vorzeichen haben."
             )
 
-        iteration = 0
+        # -----------------------------------------
+        # Schritt 3: Iteratives Verfahren
+        # -----------------------------------------
 
-        # Solange das Intervall größer als die Genauigkeit ist
-        while abs(b - a) > epsilon and iteration < max_iter:
+        for iteration in range(1, max_iter + 1):
 
-            # Mittelpunkt des Intervalls berechnen
+            # Mittelpunkt des aktuellen Intervalls berechnen
             c = (a + b) / 2
 
             # Funktionswert am Mittelpunkt berechnen
             fc = func(c)
 
-            # Wenn die Nullstelle genau genug gefunden wurde
-            if abs(fc) < epsilon:
-                return c, iteration + 1
+            # -------------------------------------
+            # Abbruchbedingung
+            # -------------------------------------
 
-            # Prüfen, in welcher Hälfte der Vorzeichenwechsel liegt
+            # Abbrechen, wenn der Funktionswert nahe genug bei 0 liegt
+            # oder das Intervall bereits kleiner als epsilon ist.
+            if abs(fc) < epsilon or abs(b - a) < epsilon:
+                return c, iteration
+
+            # -------------------------------------
+            # Schritt 4: Intervall halbieren
+            # -------------------------------------
+
+            # Falls zwischen a und c ein Vorzeichenwechsel liegt,
+            # befindet sich die Nullstelle im linken Teilintervall.
             if fa * fc < 0:
                 b = c
                 fb = fc
+
+            # Andernfalls liegt die Nullstelle im rechten Teilintervall.
             else:
                 a = c
                 fa = fc
 
-            # Iterationszähler erhöhen
-            iteration += 1
-
-        # Näherungswert zurückgeben
-        return (a + b) / 2, iteration
+        # Falls die maximale Iterationsanzahl erreicht wurde,
+        # wird der bestmögliche Näherungswert zurückgegeben.
+        return (a + b) / 2, max_iter
 
     except Exception as error:
+        # Fehlerbehandlung, z.B. bei ungültigem Intervall
         print("Fehler:", error)
         return 0.0, 0
 
 
-def berechne_leitungslaenge(a: float, w: float = 100.0) -> float:
+# -------------------------------------------------
+# Berechnung der Leitungslänge
+# -------------------------------------------------
+
+def berechne_leitungslaenge(
+    radius: float,
+    spannweite: float
+) -> float:
     """
     Berechnet die Länge der durchhängenden Leitung.
 
     Formel:
-    l = 2a * sinh(w / (2a))
 
-    Parameter:
-        a -> Krümmungsradius
-        w -> Abstand zwischen den Masten
+        l = 2a * sinh(w / (2a))
 
-    Rückgabe:
-        Länge der Leitung
+    Dabei ist:
+    - a der Krümmungsradius
+    - w die Spannweite zwischen den Masten
+
+    :param radius: berechneter Krümmungsradius
+    :param spannweite: Abstand zwischen den Masten
+    :return: Länge der Leitung
     """
-    return 2 * a * math.sinh(w / (2 * a))
+    return 2 * radius * math.sinh(spannweite / (2 * radius))
 
 
-def aufgabe_9() -> None:
+# -------------------------------------------------
+# Eingabefunktion
+# -------------------------------------------------
+
+def lies_float(text: str, standard: float | None = None) -> float:
     """
-    Führt Aufgabe 9 vollständig aus.
+    Liest eine Fließkommazahl vom Benutzer ein.
+
+    Wird keine Eingabe gemacht und ein Standardwert ist vorhanden,
+    wird dieser Standardwert verwendet.
+
+    :param text: Eingabeaufforderung
+    :param standard: Standardwert
+    :return: eingegebener oder standardmäßiger Wert
+    """
+    eingabe = input(text)
+
+    # Leere Eingabe bedeutet: Standardwert verwenden
+    if eingabe == "" and standard is not None:
+        return standard
+
+    # Eingabe in float umwandeln
+    return float(eingabe)
+
+
+# -------------------------------------------------
+# Hauptprogramm
+# -------------------------------------------------
+
+def main() -> None:
+    """
+    Startpunkt des Programms.
+
+    Das Programm:
+    1. liest die benötigten Werte ein
+    2. berechnet den Krümmungsradius mit Bisektion
+    3. berechnet daraus die Leitungslänge
+    4. gibt alle Ergebnisse aus
     """
 
-    # Sinnvolles Startintervall für den Krümmungsradius a
-    # f(100) ist positiv, f(200) ist negativ
-    start_a = 100.0
-    start_b = 200.0
+    print("Aufgabe 9 – Leitungslänge dynamisch")
 
-    # Krümmungsradius mit Bisektion berechnen
-    radius, iterationen = bisektion(
-        funktion_a,
-        start_a,
-        start_b,
-        epsilon=1e-8
+    # -----------------------------------------
+    # Eingaben mit Standardwerten
+    # -----------------------------------------
+
+    spannweite = lies_float(
+        "Abstand zwischen den Masten w [100]: ",
+        100.0
     )
 
-    # Leitungslänge mit berechnetem Radius bestimmen
-    laenge = berechne_leitungslaenge(radius)
+    durchhang = lies_float(
+        "Durchhang in der Mitte [10]: ",
+        10.0
+    )
 
-    # Ergebnisse ausgeben
+    start_a = lies_float(
+        "linke Grenze für Radius a [100]: ",
+        100.0
+    )
+
+    start_b = lies_float(
+        "rechte Grenze für Radius b [200]: ",
+        200.0
+    )
+
+    epsilon = lies_float(
+        "Genauigkeit epsilon [1e-8]: ",
+        1e-8
+    )
+
+    max_iter = int(
+        lies_float("maximale Iterationen [1000]: ", 1000)
+    )
+
+    # -----------------------------------------
+    # Vorbereitung der Berechnung
+    # -----------------------------------------
+
+    # Die Kettenlinienformel arbeitet mit der halben Spannweite.
+    halbe_spannweite = spannweite / 2
+
+    # Aus der Funktion mit mehreren Parametern wird mithilfe von lambda
+    # eine Funktion mit nur einer Variablen gemacht.
+    # Das ist nötig, weil die Bisektionsfunktion nur func(radius) erwartet.
+    func = lambda radius: funktion_a(
+        radius,
+        halbe_spannweite,
+        durchhang
+    )
+
+    # -----------------------------------------
+    # Krümmungsradius berechnen
+    # -----------------------------------------
+
+    radius, iterationen = bisektion(
+        func,
+        start_a,
+        start_b,
+        epsilon,
+        max_iter
+    )
+
+    # -----------------------------------------
+    # Leitungslänge berechnen
+    # -----------------------------------------
+
+    # Nur berechnen, wenn ein gültiger Radius gefunden wurde.
+    # Bei Fehler gibt bisektion den Radius 0.0 zurück.
+    laenge = (
+        berechne_leitungslaenge(radius, spannweite)
+        if radius != 0
+        else 0.0
+    )
+
+    # -----------------------------------------
+    # Ausgabe
+    # -----------------------------------------
+
     print("-" * 50)
     print("Aufgabe 9 – Leitungslänge")
-    print(f"Intervall für a        : [{start_a}, {start_b}]")
-    print(f"Krümmungsradius a      : {radius:.10f} m")
-    print(f"Iterationsschritte     : {iterationen}")
-    print(f"Länge der Leitung l    : {laenge:.10f} m")
+    print(f"Spannweite w          : {spannweite:.10f} m")
+    print(f"Durchhang             : {durchhang:.10f} m")
+    print(f"Intervall für Radius  : [{start_a}, {start_b}]")
+    print(f"Krümmungsradius a     : {radius:.10f} m")
+    print(f"Iterationsschritte    : {iterationen}")
+    print(f"Länge der Leitung l   : {laenge:.10f} m")
 
+
+# -------------------------------------------------
+# Programmstart
+# -------------------------------------------------
 
 if __name__ == "__main__":
-    aufgabe_9()
+    main()

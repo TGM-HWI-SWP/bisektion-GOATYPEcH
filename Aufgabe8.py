@@ -1,31 +1,34 @@
-"""
-Aufgabe 8 – Test des Solvers am Polynom P4
+"""Aufgabe 8 – Polynom P4 dynamisch testen"""
 
-Polynom:
-P4(x) = 2x + x² + 3x³ - x⁴
-
-Gesuchte Nullstelle:
-x ≈ 3,4567
-
-Gewähltes Intervall:
-[3, 4]
-"""
+# -------------------------------------------------
+# Import
+# -------------------------------------------------
 
 from typing import Callable
 
 
+# -------------------------------------------------
+# Polynomdefinition
+# -------------------------------------------------
+
 def polynom(x: float) -> float:
     """
-    Berechnet den Funktionswert des Polynoms.
+    Definiert das gegebene Polynom:
 
-    Parameter:
-        x -> eingesetzter x-Wert
+        P4(x) = 2x + x² + 3x³ - x⁴
 
-    Rückgabe:
-        Wert von P4(x)
+    Ziel:
+    → Nullstelle im Intervall [3, 4] finden
+
+    :param x: Eingabewert
+    :return: Funktionswert
     """
     return 2 * x + x**2 + 3 * x**3 - x**4
 
+
+# -------------------------------------------------
+# Bisektionsverfahren
+# -------------------------------------------------
 
 def bisektion(
     func: Callable[[float], float],
@@ -37,95 +40,147 @@ def bisektion(
     """
     Berechnet eine Nullstelle mit dem Bisektionsverfahren.
 
-    Parameter:
-        func     -> Funktion
-        a        -> linke Intervallgrenze
-        b        -> rechte Intervallgrenze
-        epsilon  -> gewünschte Genauigkeit
-        max_iter -> maximale Iterationen
+    Ablauf:
+    1. Intervall prüfen (Vorzeichenwechsel)
+    2. Intervall halbieren
+    3. Teilintervall mit Nullstelle auswählen
+    4. Wiederholen bis Genauigkeit erreicht
 
-    Rückgabe:
-        (Nullstelle, Anzahl Iterationen)
+    :param func: zu untersuchende Funktion
+    :param a: linke Intervallgrenze
+    :param b: rechte Intervallgrenze
+    :param epsilon: gewünschte Genauigkeit
+    :param max_iter: maximale Iterationen
+    :return: (Nullstelle, Iterationen)
     """
-
     try:
-        # Funktionswerte an den Intervallgrenzen
+        # -----------------------------------------
+        # Schritt 1: Funktionswerte an Grenzen
+        # -----------------------------------------
         fa = func(a)
         fb = func(b)
 
-        # Prüfen ob Vorzeichenwechsel vorliegt
+        # Prüfen auf Vorzeichenwechsel
         if fa * fb >= 0:
             raise ValueError(
-                "Ungültiges Intervall! "
-                "f(a) und f(b) müssen "
-                "unterschiedliche Vorzeichen haben."
+                "Ungültiges Intervall! f(a) und f(b) müssen unterschiedliche Vorzeichen haben."
             )
 
-        iteration = 0
-
-        # Solange Intervall größer als epsilon ist
-        while abs(b - a) > epsilon and iteration < max_iter:
+        # -----------------------------------------
+        # Schritt 2: Iteration starten
+        # -----------------------------------------
+        for iteration in range(1, max_iter + 1):
 
             # Mittelpunkt berechnen
             c = (a + b) / 2
 
-            # Funktionswert an der Mitte
+            # Funktionswert im Mittelpunkt
             fc = func(c)
 
-            # Wenn Nullstelle gefunden
-            if abs(fc) < epsilon:
-                return c, iteration + 1
+            # -------------------------------------
+            # Abbruchbedingung:
+            # - Funktionswert nahe 0
+            # - Intervall sehr klein
+            # -------------------------------------
+            if abs(fc) < epsilon or abs(b - a) < epsilon:
+                return c, iteration
 
-            # Linke Hälfte verwenden
+            # -------------------------------------
+            # Schritt 3: Intervall halbieren
+            # -------------------------------------
+
+            # Vorzeichenwechsel links → Nullstelle links
             if fa * fc < 0:
                 b = c
                 fb = fc
 
-            # Rechte Hälfte verwenden
+            # sonst rechts
             else:
                 a = c
                 fa = fc
 
-            iteration += 1
-
-        # Näherungswert zurückgeben
-        return (a + b) / 2, iteration
+        # -----------------------------------------
+        # Falls max_iter erreicht
+        # -----------------------------------------
+        return (a + b) / 2, max_iter
 
     except Exception as error:
+        # Fehlerbehandlung
         print("Fehler:", error)
         return 0.0, 0
 
 
-def test_polynom(epsilon: float) -> None:
+# -------------------------------------------------
+# Eingabefunktion
+# -------------------------------------------------
+
+def lies_float(text: str, standard: float | None = None) -> float:
     """
-    Führt einen Test mit gegebener Genauigkeit durch.
+    Liest eine Fließkommazahl vom Benutzer ein.
+
+    Vorteil:
+    → Standardwerte möglich (einfach Enter drücken)
+
+    :param text: Eingabeaufforderung
+    :param standard: Standardwert
+    :return: eingegebener Wert
+    """
+    eingabe = input(text)
+
+    if eingabe == "" and standard is not None:
+        return standard
+
+    return float(eingabe)
+
+
+# -------------------------------------------------
+# Hauptprogramm
+# -------------------------------------------------
+
+def main() -> None:
+    """
+    Startpunkt des Programms.
+
+    Liest Eingaben ein und führt die Nullstellenberechnung aus.
     """
 
-    # Geeignetes Intervall laut Aufgabe
-    a = 3.0
-    b = 4.0
+    print("Aufgabe 8 – P4 dynamisch")
 
-    # Solver starten
+    # -----------------------------------------
+    # Eingaben (mit sinnvollen Standardwerten)
+    # -----------------------------------------
+
+    a = lies_float("linke Grenze a [3]: ", 3.0)
+    b = lies_float("rechte Grenze b [4]: ", 4.0)
+    epsilon = lies_float("Genauigkeit epsilon [1e-8]: ", 1e-8)
+    max_iter = int(lies_float("maximale Iterationen [1000]: ", 1000))
+
+    # -----------------------------------------
+    # Berechnung starten
+    # -----------------------------------------
+
     nullstelle, schritte = bisektion(
-        polynom,
-        a,
-        b,
-        epsilon
+        polynom, a, b, epsilon, max_iter
     )
 
-    # Ergebnisse ausgeben
-    print("-" * 45)
-    print(f"Genauigkeit epsilon : {epsilon}")
-    print(f"Intervall           : [{a}, {b}]")
-    print(f"Nullstelle          : {nullstelle:.10f}")
-    print(f"P4(x)               : {polynom(nullstelle):.10e}")
-    print(f"Iterationsschritte  : {schritte}")
+    # -----------------------------------------
+    # Ausgabe
+    # -----------------------------------------
 
+    print("-" * 45)
+    print(f"Intervall          : [{a}, {b}]")
+    print(f"Genauigkeit        : {epsilon}")
+    print(f"Nullstelle         : {nullstelle:.10f}")
+
+    # Funktionswert an der gefundenen Stelle (Qualitätscheck)
+    print(f"P4(x)              : {polynom(nullstelle):.10e}")
+
+    print(f"Iterationsschritte : {schritte}")
+
+
+# -------------------------------------------------
+# Programmstart
+# -------------------------------------------------
 
 if __name__ == "__main__":
-
-    # Test mit Genauigkeit 10^-2
-    test_polynom(1e-2)
-
-    # Test mit Genauigkeit 10^-8
-    test_polynom(1e-8)
+    main()
